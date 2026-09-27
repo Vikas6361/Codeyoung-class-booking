@@ -13,29 +13,7 @@ Built for the Codeyoung Full-Stack Developer recruitment assignment.
 
 ---
 
-## Screenshots
 
-### Booking Page
-![Booking Page](docs/screenshots/booking-page.png)
-
-### Available Time Slots
-![Available Slots](docs/screenshots/available-slots.png)
-
-### Booking Confirmation
-![Booking Confirmation](docs/screenshots/booking-confirmation.png)
-
-### Timezone Support
-![Timezone Support](docs/screenshots/timezone-support.png)
-
-### Trial Class Meeting Room
-![Meeting Room](docs/screenshots/meeting-room.png)
-
-### Responsive Mobile UI
-![Mobile View](docs/screenshots/mobile-view.png)
-
----
-
-\---
 
 **## Overview**
 
@@ -636,3 +614,26 @@ and logs the booking email information instead of failing the booking.
   fixed constants, if different environments need different thresholds.
 
 ---
+## Screenshots
+
+### Booking Page
+![Booking Page](docs/screenshots/booking-page.png)
+
+### Available Time Slots
+![Available Slots](docs/screenshots/available-slots.png)
+
+### Booking Confirmation
+![Booking Confirmation](docs/screenshots/booking-confirmation.png)
+
+### Timezone Support
+![Timezone Support](docs/screenshots/timezone-support.png)
+
+### Trial Class Meeting Room
+![Meeting Room](docs/screenshots/meeting-room.png)
+
+### Responsive Mobile UI
+![Mobile View](docs/screenshots/mobile-view.png)
+
+---
+
+\---
