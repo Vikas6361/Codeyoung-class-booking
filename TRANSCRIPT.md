@@ -1,70 +1,95 @@
-# TRANSCRIPT.md
+# Codeyoung Full Stack Developer Assignment — AI Development Transcript
 
-# Codeyoung Full Stack Developer Assignment
+**Candidate:** Vikas  
+**Project:** Codeyoung Trial Class Booking System  
+**AI sessions:** ChatGPT + Claude  
+**Purpose:** AI-assisted development, code review, debugging, testing, documentation, and submission preparation.
 
-## AI-Assisted Development & Engineering Decision Transcript
+---
 
-> This document consolidates the substantive AI-assisted development
-> process for the Codeyoung Full Stack Developer assignment. Repetitive
-> confirmations, trivial setup exchanges, and unrelated conversation are
-> omitted. Technical findings, decisions, implementation changes,
-> verification results, and limitations are retained without inventing
-> unsupported work.
+## Session Overview
 
-------------------------------------------------------------------------
+This transcript presents the substantive AI-assisted engineering discussion for the Codeyoung Full Stack Developer assignment.
 
-## 1. Assignment Understanding
+The conversation covers:
 
-### Developer requirement
+- assignment and architecture analysis
+- backend booking logic
+- mentor capacity and exact-slot availability
+- timezone and DST handling
+- concurrency and double-booking protection
+- frontend fixes and UX
+- meeting-room implementation
+- email configuration
+- security and environment configuration
+- testing and limitations
+- README and screenshots
+- Git/GitHub preparation
+- final transcript and submission preparation
 
-The project is a trial-class appointment booking system for a Codeyoung
-Full Stack Developer recruitment assignment.
+Trivial confirmations and repetitive installation exchanges are omitted so the document remains focused on the engineering work.
 
-The required product behavior includes:
+---
 
--   React frontend.
--   Node.js/Express backend.
--   10 mentors.
--   Maximum 2 demo classes per mentor per day.
--   Theoretical maximum capacity of 20 bookings per day.
--   Parent and mentor users may be in different timezones.
--   Correct timezone conversion.
--   Daylight Saving Time handling.
--   Automatic mentor assignment.
--   Dummy meeting/class link.
--   Sensible no-availability error.
--   Usable customer-facing product.
--   README and AI transcript.
--   Evaluation of architecture, design sense, customer perspective,
-    scope decisions, and AI-assisted engineering quality.
+# Part A — ChatGPT Development, Review, Debugging & Submission
 
-### AI analysis
+## Turn 1 — Assignment Understanding and Engineering Plan
 
-The implementation should be audited before being rewritten. Existing
-architecture that is already correct should be preserved.
+### Vikas
 
-The highest-priority areas are scheduling correctness, timezone/DST
-behavior, mentor capacity, double-booking protection, validation,
-usability, security, testing, and documentation.
+I have a Codeyoung Full Stack Developer recruitment assignment. The task is to build a trial-class appointment booking system.
 
-Optional features such as authentication, payment, real video
-conferencing, or cancellation/rescheduling should not be added simply
-because commercial scheduling products may contain them.
+The main requirements are:
 
-------------------------------------------------------------------------
+- React frontend.
+- Node.js/Express or Python backend.
+- 10 mentors.
+- Maximum 2 demo classes per mentor per day.
+- Parents and mentors can be in different timezones.
+- Correct timezone conversion.
+- Daylight-saving-time handling.
+- Automatic mentor assignment.
+- Dummy class/meeting link.
+- A sensible error when no mentor is available.
+- Customer-friendly UI.
+- GitHub repository, README, and AI transcript.
 
-# 2. Initial Codebase Audit
+The evaluation also considers usability, architecture/design patterns, what is and is not built, customer point of view, and how effectively AI was used.
 
-### Developer requirement
+Please review the project as a senior full-stack engineer, QA engineer, UI/UX reviewer, security reviewer, and technical interviewer. Do not rewrite the project unnecessarily.
 
-Inspect the complete existing project first. Do not modify the project
-until the current implementation is understood.
+### AI Response
 
-### AI analysis
+The project should be improved incrementally rather than rewritten.
 
-The backend follows a layered architecture:
+The engineering priorities are:
 
-``` text
+1. Correct booking and scheduling.
+2. Exact-slot mentor availability.
+3. Two-class daily mentor capacity.
+4. Correct timezone conversion.
+5. DST-safe scheduling.
+6. Double-booking protection.
+7. Clear validation and errors.
+8. Customer-friendly booking flow.
+9. Secure configuration.
+10. Testing and documentation.
+
+Features such as payment, authentication, cancellation/rescheduling, and real video conferencing are not required unless they directly support the assignment.
+
+---
+
+## Turn 2 — Initial Architecture Review
+
+### Vikas
+
+Review the current architecture and identify whether the existing backend structure is suitable for the assignment.
+
+### AI Response
+
+The existing project follows a sensible layered architecture:
+
+```text
 Routes
    ↓
 Controllers
@@ -74,509 +99,438 @@ Services
 Models / Database
 ```
 
-The main technology stack is:
+The main technologies are:
 
-**Frontend**
+- React + TypeScript + Vite
+- Node.js + TypeScript + Express
+- MongoDB + Mongoose
+- Luxon
+- Zod
+- Nodemailer
+- Axios
 
--   React
--   TypeScript
--   Vite
--   Axios
+Important backend services include:
 
-**Backend**
+- `slot.service.ts`
+- `mentor.service.ts`
+- `capacity.service.ts`
+- `booking.service.ts`
+- `timezone.service.ts`
 
--   Node.js
--   TypeScript
--   Express
--   MongoDB
--   Mongoose
--   Luxon
--   Zod
--   Nodemailer
+The existing architecture is suitable and should be preserved.
 
-The existing architecture was considered a sound foundation and was
-preserved rather than replaced.
+The booking logic should remain in services rather than being moved into controllers.
 
-### Finding
+---
 
-The core booking algorithm was substantially correct.
+## Turn 3 — Exact-Slot Availability
 
-The reported concern that booking one slot could remove availability
-from every other slot did not reproduce from the backend implementation.
-Mentor availability was being calculated for each requested slot based
-on the actual UTC instant, mentor working hours, existing booking
-overlap, and daily capacity.
+### Vikas
 
-Several separate issues were found that were more important to fix.
+I want to confirm an important behavior.
 
-------------------------------------------------------------------------
+If one mentor is booked at 5 PM, should that mentor disappear from 6 PM, 7 PM, and 8 PM as well?
 
-# 3. Initial Bugs Identified
-
-### Finding
-
-The audit identified the following issues:
-
-1.  `client/vite.config.ts` was missing, preventing a normal frontend
-    build.
-2.  The backend generated a dummy meeting URL, but the frontend did not
-    have a corresponding meeting route/page.
-3.  The confirmation screen relied on local form state instead of the
-    authoritative backend booking response.
-4.  The frontend booking type did not match the actual backend response
-    shape.
-5.  The assigned mentor was therefore not correctly represented in the
-    confirmation experience.
-6.  Controller error classification relied on brittle message substring
-    matching.
-7.  DST validation errors could incorrectly become generic HTTP 500
-    responses.
-8.  The frontend minimum-date calculation used UTC through
-    `toISOString()`, creating a local-date edge case for users in
-    timezones behind UTC.
-9.  The API base URL was hardcoded to localhost.
-10. `.env.example`, Git ignore configuration, root documentation, and
-    transcript documentation were missing.
-11. Empty/dead scaffold files existed.
-12. Express did not have a complete 404/global error-handling layer.
-13. Client-side email validation was incomplete.
-14. Responsive behavior required additional attention for narrower
-    tablet layouts.
-
-### Decision
-
-Fix the actual issues while preserving the existing booking
-architecture.
-
-------------------------------------------------------------------------
-
-# 4. Mentor Capacity Design
-
-### Developer requirement
-
-Each mentor can conduct at most two demo classes per day.
-
-### AI analysis
-
-The configuration uses:
-
-``` text
-Maximum classes per mentor per day = 2
-Number of mentors = 10
-```
-
-Therefore:
-
-``` text
-10 × 2 = 20 theoretical bookings/day
-```
-
-The 20-booking value is a theoretical aggregate capacity. It does not
-mean that every individual time slot will always have 20 mentors
-available.
-
-Daily capacity must be evaluated per mentor and according to that
-mentor's local calendar day.
-
-### Decision
-
-Use a per-mentor daily capacity mechanism rather than a single global
-booking counter.
-
-------------------------------------------------------------------------
-
-# 5. Exact-Slot Availability
-
-### Developer question
-
-If a mentor is booked at 5 PM, should the mentor disappear from the 6
-PM, 7 PM, and 8 PM slots?
-
-### AI analysis
+### AI Response
 
 No.
 
-Availability must be calculated independently for each exact candidate
-slot.
+Availability must be calculated independently for each candidate slot.
 
-The availability process considers:
+For example:
 
--   requested UTC instant;
--   mentor timezone;
--   mentor local working hours;
--   existing booking overlap;
--   mentor daily class count.
-
-### Verification
-
-The reported global-slot-removal issue did not reproduce from the actual
-backend algorithm.
-
-The expected behavior is:
-
-``` text
-5 PM booking
-    ↓
-5 PM: affected mentor becomes unavailable
-
-6 PM
-    ↓
-availability remains independently calculated
-
-7 PM
-    ↓
-availability remains independently calculated
-
-8 PM
-    ↓
-availability remains independently calculated
+```text
+5 PM → mentor unavailable at 5 PM
+6 PM → mentor may still be available
+7 PM → mentor may still be available
+8 PM → mentor may still be available
 ```
 
-The implementation therefore did not require a rewrite of the core
-availability algorithm.
+The correct logic checks the requested UTC instant against:
 
-------------------------------------------------------------------------
+- mentor working hours
+- mentor local calendar day
+- existing booking overlap
+- daily booking count
 
-# 6. Timezone Architecture
+The reviewed backend logic already followed this model.
 
-### Developer requirement
+A slot-specific verification produced the expected behavior:
 
-Parents and mentors may operate in different timezones.
+```text
+Booked slot: 5 PM
 
-### AI analysis
+5 PM → 9 available mentors
+6 PM → 10 available mentors
+7 PM → 10 available mentors
+```
 
-UTC should be the canonical representation for persisted booking
-timestamps.
+Therefore the suspected global slot-removal problem was not present in the backend algorithm.
+
+---
+
+## Turn 4 — Mentor Daily Capacity
+
+### Vikas
+
+The assignment says each mentor can take a maximum of two demo classes per day. How should this be implemented correctly?
+
+### AI Response
+
+Use a per-mentor, per-local-day capacity mechanism.
+
+The configuration is:
+
+```text
+CLASS_DURATION_MINUTES = 60
+MAX_CLASSES_PER_MENTOR_PER_DAY = 2
+```
+
+With 10 mentors:
+
+```text
+10 × 2 = 20 theoretical bookings/day
+```
+
+This should not be implemented as one global 20-booking counter.
+
+Each mentor needs an independent daily limit.
+
+The `MentorDailyCapacity` model can use:
+
+```text
+mentorId
+localDate
+bookingCount
+```
+
+with a unique mentor/date combination.
+
+For concurrency protection, capacity should be reserved atomically using a condition equivalent to:
+
+```text
+bookingCount < 2
+        ↓
+increment bookingCount
+```
+
+---
+
+## Turn 5 — Mentor Local Calendar Day
+
+### Vikas
+
+The mentor's daily limit should be based on the mentor's local timezone, not the parent's timezone or UTC date.
+
+How should this work?
+
+### AI Response
+
+The appointment is stored in UTC, but mentor-day calculations are performed after converting the appointment into the mentor's IANA timezone.
 
 The flow is:
 
-``` text
+```text
 Parent local date/time
         ↓
-Timezone conversion
+Parent timezone
         ↓
 UTC
-        ↓
-Stored booking
-```
-
-When checking a mentor:
-
-``` text
-Stored/requested UTC time
         ↓
 Mentor timezone
         ↓
-Mentor local date/time
+Mentor local date
         ↓
-Working-hours and daily-capacity checks
+Daily capacity check
 ```
 
-### Decision
+This prevents midnight-crossing bugs.
 
-Use UTC for the canonical booking timestamp while displaying local times
-to the relevant user.
+For example, an appointment can be on one calendar day for the parent but the next calendar day for the mentor.
 
-This prevents the database from depending on a particular user's
-timezone and allows mentor working hours and local-day capacity to be
-evaluated correctly.
+The mentor's own local calendar day must determine whether the mentor has already reached two classes.
 
-------------------------------------------------------------------------
+---
 
-# 7. DST Validation
+## Turn 6 — Timezone Architecture
 
-### Developer requirement
+### Vikas
 
-The system must correctly handle daylight-saving-time transitions.
+How should timezone conversion be designed so that different parent and mentor timezones are handled safely?
 
-### AI analysis
+### AI Response
 
-A local date/time is validated using a round-trip approach:
+UTC should be the canonical stored representation.
 
-``` text
-Local date/time
-      ↓
-Timezone
-      ↓
-UTC
-      ↓
+Use IANA timezone identifiers such as:
+
+```text
+Asia/Kolkata
+America/New_York
+Europe/London
+```
+
+The system should:
+
+1. Accept a parent's local date/time and timezone.
+2. Validate that local date/time.
+3. Convert it to UTC.
+4. Store UTC start/end times.
+5. Convert the UTC appointment into each mentor's timezone for availability checks.
+6. Convert UTC back into parent and mentor local times for display.
+
+Luxon is appropriate because it provides IANA timezone and DST-aware operations.
+
+No manual offset arithmetic should be used.
+
+---
+
+## Turn 7 — DST Validation
+
+### Vikas
+
+DST is an important grading requirement. How should nonexistent local times be handled?
+
+### AI Response
+
+A nonexistent local time during a spring-forward transition must be rejected rather than silently changed.
+
+A reliable approach is round-trip validation:
+
+```text
+Requested local date/time
+        ↓
+Convert to UTC
+        ↓
 Convert back to original timezone
-      ↓
-Compare with requested local value
+        ↓
+Compare with requested value
 ```
 
-If the requested local value does not round-trip to itself, the local
-time is treated as nonexistent.
+If the converted-back value does not match the original local date/time, the requested local time is invalid.
 
-### Example
+For example, in `America/New_York` on a spring-forward date, a local `02:00` time can be nonexistent.
 
-For a spring-forward transition, a local hour such as:
+The application should return a clear validation error such as:
 
-``` text
-02:00
+```text
+The selected local time does not exist because of a daylight-saving-time transition.
 ```
 
-may not exist.
+---
 
-The application should reject that requested local time rather than
-silently changing it to another hour.
+## Turn 8 — DST Slot Generation Bug
 
-------------------------------------------------------------------------
+### Vikas
 
-# 8. DST Slot-Generation Bug
+During slot generation, I want to make sure the application does not accidentally turn an invalid DST hour into another valid hour or show duplicates.
 
-### Finding
+### AI Response
 
-A deeper review found a subtle slot-generation issue.
+A simple local-hour construction can normalize a nonexistent hour.
 
-Using a simple Luxon hour-setting operation could normalize a
-nonexistent DST local time into another valid hour. For example, a
-nonexistent 02:00 could be normalized to 03:00.
+For example:
 
-That could cause two visible slots to represent the same UTC instant.
-
-### Decision
-
-Slot generation must validate each local candidate using the same
-DST-aware logic used for booking validation.
-
-### Verification
-
-For the 2026 US spring-forward transition:
-
-``` text
-00:00 → valid
-01:00 → valid
-02:00 → excluded
-03:00 → valid
-04:00 → valid
+```text
+02:00 → normalized to 03:00
+03:00 → 03:00
 ```
 
-The DST test produced:
+That can create duplicate visible times.
 
-``` text
+The fix is to validate every generated local candidate using the same DST-aware round-trip logic.
+
+Expected behavior on a spring-forward day:
+
+```text
+00:00 → present
+01:00 → present
+02:00 → absent
+03:00 → present
+04:00 → present
+```
+
+The verification should ensure:
+
+```text
 23 valid hourly slots
 23 unique UTC instants
 ```
 
-A normal non-DST day continues to provide:
+while a normal day continues to produce:
 
-``` text
+```text
 24 hourly slots
 ```
 
-### Result
+---
 
--   Nonexistent DST hour is excluded.
--   Duplicate UTC instants are avoided.
--   Normal days remain unaffected.
+## Turn 9 — Concurrency and Double Booking
 
-------------------------------------------------------------------------
+### Vikas
 
-# 9. Concurrency and Double-Booking Protection
+Suppose only one mentor is available and two parents submit the same slot at almost the same time.
 
-### Developer requirement
+How can the application prevent both requests from booking the mentor?
 
-The booking system must not allow a mentor to be double-booked or exceed
-daily capacity under concurrent requests.
+### AI Response
 
-### AI analysis
+Use multiple layers of protection.
 
-The implementation uses multiple layers of protection.
+### 1. Atomic mentor daily capacity
 
-#### Atomic daily capacity
+Reserve daily capacity using an atomic conditional database update:
 
-The mentor's daily capacity is reserved through an atomic database
-update.
+```text
+bookingCount < 2
+        ↓
+increment bookingCount
+```
 
-The operation only succeeds while the mentor remains below the
-configured daily limit.
+### 2. Unique booking index
 
-#### Unique database constraint
+Use a database uniqueness constraint on:
 
-A unique constraint protects the combination:
-
-``` text
+```text
 mentorId + startTimeUTC
 ```
 
-This prevents two bookings from occupying the same mentor at the same
-start time.
+This provides database-level protection against duplicate mentor/slot bookings.
 
-#### Overlap verification
+### 3. Final overlap check
 
-The booking service performs a final overlap check before creating the
-booking.
+Before creating the booking, verify that no overlapping confirmed booking exists for the mentor.
 
-#### Capacity rollback
+### 4. Release capacity on failure
 
-If capacity is reserved but booking creation fails, the reserved
-capacity is released.
+If daily capacity is reserved but booking creation fails, release the reserved capacity.
 
-### Verification limitation
+This makes the booking flow resilient to partial failures.
 
-A live concurrent MongoDB race test was not fully executed in the AI
-environment because the required MongoDB test environment could not be
-established.
+A true live concurrent MongoDB race test was not executed in the AI environment, so this should be documented as code-level concurrency verification rather than claimed as a live race test.
 
-Therefore:
+---
 
-``` text
-Concurrency protection was verified through implementation review,
-atomic database logic, and database constraints.
+## Turn 10 — Parent Duplicate Protection
 
-A production-like live race test was not claimed as completed.
+### Vikas
+
+What about a parent submitting twice or making overlapping bookings?
+
+### AI Response
+
+Normalize the parent email:
+
+```text
+trim()
+lowercase()
 ```
 
-------------------------------------------------------------------------
+Use a unique database constraint for the parent email.
 
-# 10. Parent Duplicate Protection
+Also check for an existing confirmed overlapping booking for that parent before creating another booking.
 
-### Finding
+This helps prevent duplicate parent records and accidental overlapping bookings caused by retries or double submission.
 
-Parent records use normalized email handling and a unique database
-constraint.
+A one-parent-one-day rule should not be invented because it is not explicitly required by the assignment.
 
-The booking flow also handles MongoDB duplicate-key errors.
+---
 
-### Decision
+## Turn 11 — Error Handling
 
-Keep database-level uniqueness rather than relying only on
-application-level checks.
+### Vikas
 
-This protects against duplicate-parent creation during concurrent
-first-time bookings.
+I found that some errors were being classified based on message text. Is that safe?
 
-------------------------------------------------------------------------
+### AI Response
 
-# 11. Backend Error Handling
+It is brittle.
 
-### Finding
+For example, checking:
 
-The original controller logic attempted to determine HTTP status codes
-through brittle error-message substring matching.
-
-For example, checking whether an error contained:
-
-``` text
-"invalid"
+```text
+message.includes("invalid")
 ```
 
-was insufficient for the DST error:
+is unreliable because a legitimate validation error may not contain that exact word.
 
-``` text
-The selected local time does not exist because of a daylight-saving-time transition.
+DST errors are a good example.
+
+Expected domain/validation errors should be handled explicitly and returned as appropriate 400-level responses, while unexpected errors should remain 500-level server errors.
+
+A global error handler and 404 handler also make the API easier to maintain.
+
+For no availability, a clear response is appropriate:
+
+```text
+The selected slot was just booked. Please choose another time.
 ```
 
-That message did not contain the expected substring and could therefore
-be returned as a generic server error.
+---
 
-### Decision
+## Turn 12 — Frontend Date Handling
 
-Improve error handling so expected validation/scheduling errors return
-appropriate client responses while unexpected failures remain server
-errors.
+### Vikas
 
-A global error handler and 404 handler were also added.
+The frontend uses:
 
-### Result
-
-The API now has clearer separation between:
-
-``` text
-Client/validation errors
-```
-
-and
-
-``` text
-Unexpected server errors
-```
-
-without exposing unnecessary internal details.
-
-------------------------------------------------------------------------
-
-# 12. Frontend Date Handling
-
-### Finding
-
-The frontend used:
-
-``` ts
+```ts
 new Date().toISOString().split("T")[0]
 ```
 
-to determine the minimum selectable date.
+for the minimum booking date. Is that correct?
 
-`toISOString()` represents UTC rather than the user's local calendar
-date.
+### AI Response
 
-This can produce an incorrect date around midnight for users in
-timezones behind UTC.
+Not for a timezone-aware scheduling UI.
 
-### Decision
+`toISOString()` uses UTC.
 
-Calculate the minimum date using the browser's local year, month, and
-day.
+Around midnight, a user's local calendar date can differ from the UTC date.
 
-### Result
+For a date-only minimum value, the browser's local year/month/day should be used instead.
 
-The date picker now follows the user's local calendar date instead of
-the UTC calendar date.
+This avoids preventing a user from selecting the correct local current date.
 
-------------------------------------------------------------------------
+---
 
-# 13. Frontend API Configuration
+## Turn 13 — Meeting Link and Meeting Page
 
-### Finding
+### Vikas
 
-The API URL was hardcoded to:
+The backend generates a dummy meeting link, but I noticed there was no actual page behind it.
 
-``` text
-http://localhost:5000/api
+### AI Response
+
+A generated link is not useful if it leads to a dead route.
+
+Because the assignment only requires a dummy class link, a simulated meeting room is sufficient.
+
+Add a frontend route such as:
+
+```text
+/meeting/:id
 ```
 
-### Decision
+The confirmation page should provide a clear “Join Trial Class” action.
 
-Use an environment variable:
+A real video conferencing integration is unnecessary for this assignment.
 
-``` env
-VITE_API_BASE_URL=http://localhost:5000/api
-```
+---
 
-and provide a `.env.example`.
+## Turn 14 — Confirmation Data
 
-This makes local and future deployed environments configurable without
-changing source code.
+### Vikas
 
-------------------------------------------------------------------------
+The confirmation page currently relies on form state. Should it use the backend booking response?
 
-# 14. Booking Response and Confirmation
+### AI Response
 
-### Finding
+Yes.
 
-The frontend confirmation page originally relied on local state such as:
+The backend response is authoritative and should contain information such as:
 
-``` text
-name
-date
-selectedTime
-timezone
-```
-
-rather than the actual booking response returned by the server.
-
-The frontend type also did not accurately represent the server's
-response structure.
-
-### Decision
-
-Treat the backend response as the authoritative booking record.
-
-The response contains information such as:
-
-``` text
+```text
 bookingId
 parent
 mentor
@@ -586,575 +540,681 @@ endTimeUTC
 status
 ```
 
-### Result
+The frontend booking type should match that response.
 
-The confirmation screen can display the actual assigned mentor and
-authoritative booking information instead of reconstructing it from
-user-entered state.
+The confirmation page should display the actual assigned mentor and actual booking information returned by the server.
 
-------------------------------------------------------------------------
+This avoids showing stale or inconsistent client-side state.
 
-# 15. Dummy Meeting Room
+---
 
-### Finding
+## Turn 15 — Email Notifications
 
-The backend generated a dummy meeting URL, but initially there was no
-frontend route/page behind that URL.
+### Vikas
 
-### Decision
+I have Nodemailer in the backend. How should email behavior work during development?
 
-Implement a real frontend meeting route/page.
+### AI Response
 
-The assignment only requires a dummy class link, so a simulated meeting
-room is sufficient.
+SMTP should be optional.
 
-### Scope decision
+When SMTP is configured, the application can send parent and mentor notifications.
 
-A real video-conferencing system was intentionally not implemented
-because it is outside the stated assignment requirement.
+Without SMTP credentials, development should not fail the booking. Instead, the service can log a development fallback such as:
 
-------------------------------------------------------------------------
-
-# 16. Email Notification Design
-
-### AI analysis
-
-The email service supports a development fallback so the application can
-run without SMTP configuration.
-
-For an actual SMTP configuration, two notification flows are supported:
-
-### Parent confirmation
-
-Contains:
-
--   parent name;
--   mentor name;
--   class time in the parent's timezone;
--   meeting link.
-
-### Mentor notification
-
-Contains:
-
--   mentor name;
--   parent information;
--   class time in the mentor's timezone;
--   meeting details.
-
-### Limitation
-
-Real Gmail SMTP delivery was not fully verified in the AI environment
-because real credentials were not available for testing.
-
-Therefore, the transcript does not claim successful live email delivery.
-
-SMTP credentials must remain in `.env` and must never be committed to
-the repository.
-
-------------------------------------------------------------------------
-
-# 17. CORS Debugging
-
-### Developer observation
-
-During local testing, the frontend was running on:
-
-``` text
-http://localhost:5174
+```text
+[DEV] Email skipped
 ```
 
-while the backend was running on:
+Parent notification should include:
 
-``` text
-http://localhost:5000
+- parent name
+- mentor name
+- class time in parent timezone
+- meeting link
+
+Mentor notification should include:
+
+- mentor name
+- parent information
+- class time in mentor timezone
+- meeting details
+
+Real SMTP credentials must never be committed.
+
+---
+
+## Turn 16 — Security and Environment Variables
+
+### Vikas
+
+What environment configuration should be included before submitting to GitHub?
+
+### AI Response
+
+Use `.env` for private values and `.env.example` for the safe template.
+
+Typical configuration includes:
+
+```env
+MONGODB_URI=<private>
+PORT=5000
+CORS_ORIGIN=http://localhost:5174
+FRONTEND_URL=http://localhost:5174
 ```
 
-The backend CORS configuration was allowing:
+Optional SMTP configuration can include:
 
-``` text
-http://localhost:5173
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=<private>
+SMTP_PASSWORD=<private>
+EMAIL_FROM=<private>
 ```
 
-### Finding
+Never commit:
 
-The browser rejected the API response because the frontend origin was
-`5174` while the backend only allowed `5173`.
+- `.env`
+- database passwords
+- SMTP passwords
+- Gmail app passwords
 
-This was a development configuration problem, not a mentor-availability
-problem.
+Also ignore:
 
-### Decision
+- `node_modules`
+- build output
+- local database/test artifacts where applicable
 
-Allow the relevant Vite development origins in the backend CORS
-configuration.
+Rate limiting was added as additional API hardening.
 
-For local development:
+---
 
-``` text
-localhost:5173
-localhost:5174
+## Turn 17 — CORS Debugging
+
+### Vikas
+
+The browser is showing a CORS error. The frontend is running on port 5174 while the backend was allowing port 5173.
+
+### AI Response
+
+This is an origin mismatch.
+
+The backend should allow the actual frontend development origin.
+
+For local development, both Vite ports can be allowed:
+
+```ts
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+];
 ```
 
-can be allowed.
+This is a development configuration issue, not a booking-availability issue.
 
-### Result
+---
 
-The CORS configuration matches the actual development frontend port.
+## Turn 18 — MongoDB Environment Debugging
 
-------------------------------------------------------------------------
+### Vikas
 
-# 18. MongoDB Environment Debugging
+After restarting the backend, it says:
 
-### Developer observation
-
-When the backend was restarted from the extracted project, it reported:
-
-``` text
-Error: MONGODB_URI is not defined
+```text
+MONGODB_URI is not defined
 ```
 
-and:
+and the environment loader reports no variables loaded.
 
-``` text
-injected env (0) from .env
+### AI Response
+
+The backend is not receiving its required `.env` configuration.
+
+The expected structure is:
+
+```text
+codeyoung-class-booking/
+└── server/
+    ├── .env
+    ├── package.json
+    └── src/
 ```
 
-### Finding
+The server environment needs:
 
-The backend was not receiving the required MongoDB environment variable.
-
-### Required local configuration
-
-The server `.env` should contain:
-
-``` env
+```env
 MONGODB_URI=<MongoDB connection string>
 PORT=5000
 CORS_ORIGIN=http://localhost:5174
 FRONTEND_URL=http://localhost:5174
 ```
 
-### Security decision
+This is separate from the CORS issue.
 
-The actual MongoDB connection string and credentials must remain
-private.
+---
 
-They should not be included in the transcript or GitHub repository.
+## Turn 19 — Testing Strategy
 
-------------------------------------------------------------------------
+### Vikas
 
-# 19. Security and Configuration
+I want the README to honestly describe what was tested. Which tests should be listed?
 
-### Implemented / addressed
+### AI Response
 
--   Environment-based configuration.
--   `.env` protection.
--   `.env.example`.
--   MongoDB credentials excluded from source control.
--   SMTP credentials excluded from source control.
--   Input validation.
--   CORS configuration.
--   Safe API error handling.
--   Rate limiting.
--   Database uniqueness constraints.
+The testing section should distinguish actual execution from code-level verification.
 
-### Security scope
+### Verified areas
 
-These measures represent production-oriented hardening appropriate to
-the assignment.
+- normal booking flow
+- exact-slot availability
+- mentor two-class daily capacity
+- next-day capacity behavior
+- mentor-local calendar day
+- timezone conversion
+- DST spring-forward rejection
+- invalid DST hour excluded from generated slots
+- fall-back deterministic handling
+- no-availability error
+- application behavior without SMTP
+- meeting room
+- booking reset/another-booking flow
+- validation
+- responsive UI
+- backend-unavailable handling
+- TypeScript/build verification
 
-The system should not be described as fully production-secure because
-full production infrastructure, deployment security, monitoring, and
-security testing are outside the verified scope.
+### Limitations
 
-------------------------------------------------------------------------
+A true simultaneous MongoDB race was not live-tested because the test environment could not obtain the required MongoDB test binary.
 
-# 20. UI/UX and Customer Perspective
+Real Gmail SMTP delivery was also not live-tested because credentials were unavailable.
 
-### Developer requirement
+The README should explicitly state these limitations rather than claiming all tests passed.
 
-The product should be usable and should demonstrate customer-oriented
-design.
+---
 
-### AI analysis
+## Turn 20 — README and Product Documentation
 
-The parent journey should remain simple:
+### Vikas
 
-``` text
+The README needs to look professional for the evaluator. What should it contain?
+
+### AI Response
+
+The README should explain:
+
+1. Project purpose.
+2. Core booking flow.
+3. Features.
+4. Tech stack.
+5. Architecture.
+6. Project structure.
+7. Timezone/DST approach.
+8. Mentor assignment and capacity.
+9. Database models.
+10. API endpoints.
+11. Environment variables.
+12. Local setup.
+13. Testing.
+14. Security decisions.
+15. What is not implemented.
+16. Future improvements.
+17. Screenshots.
+
+The documentation should clearly distinguish required assignment features from optional enhancements.
+
+---
+
+## Turn 21 — Screenshots
+
+### Vikas
+
+I want screenshots at the bottom of the README so the evaluator can quickly understand the product.
+
+### AI Response
+
+Use a dedicated screenshot section with files such as:
+
+```text
+docs/screenshots/booking-page.png
+docs/screenshots/available-slots.png
+docs/screenshots/booking-confirmation.png
+docs/screenshots/timezone-support.png
+docs/screenshots/meeting-room.png
+docs/screenshots/mobile-view.png
+```
+
+Recommended README section:
+
+```markdown
+---
+
+## Screenshots
+
+### Booking Page
+![Booking Page](docs/screenshots/booking-page.png)
+
+### Available Time Slots
+![Available Slots](docs/screenshots/available-slots.png)
+
+### Booking Confirmation
+![Booking Confirmation](docs/screenshots/booking-confirmation.png)
+
+### Timezone Support
+![Timezone Support](docs/screenshots/timezone-support.png)
+
+### Trial Class Meeting Room
+![Meeting Room](docs/screenshots/meeting-room.png)
+
+### Responsive Mobile UI
+![Mobile View](docs/screenshots/mobile-view.png)
+```
+
+---
+
+## Turn 22 — GitHub Preparation
+
+### Vikas
+
+The project is now in:
+
+```text
+C:\Users\ASUS\Downloads\codeyoung-class-booking
+```
+
+I want to prepare it for GitHub.
+
+### AI Response
+
+The repository should contain:
+
+- frontend source
+- server source
+- README
+- screenshots
+- `.env.example`
+- transcript
+- package files
+- appropriate Git ignore rules
+
+It should not contain:
+
+- `.env`
+- credentials
+- `node_modules`
+- unnecessary build artifacts
+
+The repository can use the `main` branch.
+
+The intended public repository is:
+
+```text
+https://github.com/Vikas6361/Codeyoung-class-booking
+```
+
+---
+
+## Turn 23 — Final Technical Review
+
+### Vikas
+
+Before submission, perform a final review against the assignment requirements.
+
+### AI Response
+
+The implementation covers the central assignment requirements:
+
+| Requirement | Implementation |
+|---|---|
+| React frontend | React + TypeScript + Vite |
+| Backend | Node.js + TypeScript + Express |
+| 10 mentors | Seeded mentor data |
+| Max 2 classes/mentor/day | Atomic mentor daily capacity |
+| Different timezones | IANA timezone support |
+| DST handling | Round-trip validation |
+| Automatic mentor assignment | Mentor availability service |
+| Dummy meeting link | Generated meeting URL |
+| Meeting destination | `/meeting/:id` route |
+| No availability | Clear 400-level booking error |
+| Customer-facing UI | Responsive booking flow |
+| Documentation | README + screenshots |
+| AI transcript | `TRANSCRIPT.md` |
+
+The major limitations should remain honestly documented for concurrency and real SMTP delivery.
+
+---
+
+## Turn 24 — Final Submission Preparation
+
+### Vikas
+
+The assignment requires the AI transcript, GitHub repository, README, and submission email. I want the final submission to be professional.
+
+### AI Response
+
+The final submission should contain:
+
+- Public GitHub repository.
+- Complete source code.
+- README with setup and screenshots.
+- `TRANSCRIPT.md`.
+- No secrets.
+- Working booking flow.
+- Working meeting route.
+- Timezone/DST support.
+- Mentor capacity handling.
+- Clear no-availability behavior.
+
+Submission email details:
+
+```text
+To: campus.ka@talentiseglobal.com
+
+Subject:
+Codeyoung Assignment Task - <Candidate Name> - Institute Name (ABBR)
+```
+
+The email should include the GitHub repository link and briefly identify the README, transcript, source code, and screenshots.
+
+---
+
+# Part B — Claude Development Session
+
+## Turn 25 — Claude: Full Project Audit
+
+### Vikas
+
+I have an existing full-stack project for the Codeyoung Full Stack Developer recruitment assignment. Act as a senior full-stack engineer, software architect, QA engineer, UI/UX engineer, security reviewer, code reviewer, and technical interviewer.
+
+First inspect the complete project and audit the current implementation. Do not rewrite the project from scratch. Identify what is already correct, what is missing, and what must be fixed.
+
+The assignment requires:
+
+- React frontend.
+- Node.js/Express or Python backend.
+- 10 mentors.
+- Maximum 2 demo classes per mentor per day.
+- Different parent and mentor timezones.
+- Correct timezone conversion.
+- Daylight-saving-time handling.
+- Automatic mentor assignment.
+- Dummy class/meeting link.
+- A sensible error when no mentor is available.
+- A usable customer-facing product.
+- GitHub repository, README, and AI transcript.
+
+### Claude Response
+
+The project should be audited before modification.
+
+The existing layered architecture is appropriate and should be preserved.
+
+The main engineering priorities are:
+
+1. Correct scheduling.
+2. Exact-slot availability.
+3. Mentor daily capacity.
+4. Timezone/DST correctness.
+5. Double-booking protection.
+6. Validation and errors.
+7. Customer-friendly booking.
+8. Secure configuration.
+9. Testing and documentation.
+
+The core booking algorithm was substantially correct.
+
+---
+
+## Turn 26 — Claude: Critical Findings
+
+### Vikas
+
+Continue the audit and identify the concrete issues that need fixing.
+
+### Claude Response
+
+The audit identified:
+
+- missing `client/vite.config.ts`
+- generated meeting URL without a working meeting page
+- confirmation relying on form state
+- frontend booking type mismatch
+- assigned mentor not displayed correctly
+- brittle controller error classification
+- DST errors potentially returning 500
+- UTC-based frontend minimum-date calculation
+- hardcoded API URL
+- missing `.env.example`
+- Git ignore improvements needed
+- missing root README
+- missing transcript
+- missing global error/404 handling
+- weak client-side email validation
+- responsive UI improvements needed
+
+The correct approach is to fix the smallest responsible layer.
+
+---
+
+## Turn 27 — Claude: Capacity and Availability Review
+
+### Vikas
+
+Review the mentor capacity and exact-slot logic carefully.
+
+### Claude Response
+
+The system uses:
+
+```text
+CLASS_DURATION_MINUTES = 60
+MAX_CLASSES_PER_MENTOR_PER_DAY = 2
+```
+
+Ten mentors therefore provide a theoretical maximum of:
+
+```text
+10 × 2 = 20 bookings/day
+```
+
+But actual availability remains dependent on exact slot, mentor local date, working hours, existing overlap, and daily capacity.
+
+The daily capacity mechanism is a concurrency guard, not a global slot counter.
+
+Availability remains slot-specific.
+
+---
+
+## Turn 28 — Claude: DST Deep Review
+
+### Vikas
+
+Review DST behavior, including the spring-forward case where a local hour does not exist.
+
+### Claude Response
+
+The timezone service uses DST-aware round-trip validation.
+
+A nonexistent local time is rejected rather than silently normalized.
+
+Slot generation was also reviewed because naive local-hour construction can turn:
+
+```text
+02:00 → 03:00
+03:00 → 03:00
+```
+
+into duplicate visible slots.
+
+The fix is to validate every generated local candidate.
+
+The resulting behavior excludes the nonexistent spring-forward hour while retaining valid hours.
+
+---
+
+## Turn 29 — Claude: Concurrency Review
+
+### Vikas
+
+Review whether two simultaneous requests can exceed mentor capacity or create a double booking.
+
+### Claude Response
+
+The project uses:
+
+1. Atomic daily capacity reservation.
+2. A unique `{mentorId, startTimeUTC}` database index.
+3. Final overlap checking.
+4. Capacity release if booking creation fails.
+
+This provides strong code-level protection.
+
+A true live concurrent MongoDB race test was not executed in the AI environment because the required MongoDB test binary could not be downloaded.
+
+That limitation should be documented honestly.
+
+---
+
+## Turn 30 — Claude: Frontend and Meeting Experience
+
+### Vikas
+
+Review the customer experience and make sure the booking confirmation and meeting link actually work.
+
+### Claude Response
+
+The customer journey should be:
+
+```text
 Enter details
       ↓
 Select timezone
       ↓
 Select date
       ↓
-Select available time
+Choose available slot
       ↓
 Book
       ↓
 See assigned mentor
       ↓
-Access meeting link
+Join trial class
 ```
 
-The interface should clearly communicate:
+The confirmation should use the authoritative backend response.
 
--   required fields;
--   timezone;
--   selected date;
--   available slots;
--   loading state;
--   unavailable state;
--   validation errors;
--   booking confirmation;
--   assigned mentor;
--   meeting access.
+The generated meeting URL needs a real frontend route.
 
-Responsive behavior and clear focus states were also considered.
+A simulated meeting room is sufficient because the assignment only requires a dummy class link.
 
-### Scope decision
+The UI should include validation, loading states, no-availability states, responsive layout, and clear confirmation.
 
-Authentication was not added because it would add friction without being
-required for the core trial-booking flow.
+---
 
-Payment was not added because the assignment does not require it.
+## Turn 31 — Claude: Email and Security
 
-Real video conferencing was not added because a dummy meeting link
-satisfies the stated requirement.
+### Vikas
 
-------------------------------------------------------------------------
+Review email configuration and security before the repository is public.
 
-# 21. Parent Daily Booking Limit
+### Claude Response
 
-### Developer question
+Nodemailer can send notifications when SMTP is configured.
 
-Should one parent be restricted to one booking per day?
+Without SMTP configuration, the application should use the development fallback and continue working.
 
-### AI analysis
+Never commit:
 
-This was considered but is not explicitly required by the assignment.
-
-Adding such a restriction without a defined product rule could
-incorrectly prevent legitimate scenarios, for example a parent booking
-for different children.
-
-### Decision
-
-Do not implement a one-parent-one-day restriction.
-
-This is a deliberate product decision rather than an unfinished required
-feature.
-
-------------------------------------------------------------------------
-
-# 22. Mentor Timezone Data
-
-### AI analysis
-
-The scheduling engine supports mentor timezones.
-
-The seeded mentor data remains primarily India-based in accordance with
-the project context.
-
-The parent timezone selection still exercises cross-timezone scheduling.
-
-Mentor timezone diversity was not added merely as artificial
-demonstration data when it was not required.
-
-------------------------------------------------------------------------
-
-# 23. Rate Limiting
-
-### Decision
-
-Rate limiting was added as security hardening around API usage.
-
-This protects booking and availability endpoints from excessive
-requests.
-
-It is an additional engineering improvement rather than a core business
-requirement.
-
-------------------------------------------------------------------------
-
-# 24. Documentation and Repository Hygiene
-
-### Required documentation
-
-The project was prepared with:
-
--   root `README.md`;
--   `TRANSCRIPT.md`;
--   `.env.example`;
--   `.gitignore`.
-
-### Repository hygiene
-
-The following should not be committed:
-
-``` text
+```text
 .env
-node_modules/
-dist/
-database credentials
-SMTP passwords
-other secrets
+MongoDB credentials
+SMTP credentials
+Gmail app passwords
 ```
 
-The README should explain:
+Use `.env.example` instead.
 
--   project architecture;
--   setup;
--   environment variables;
--   running frontend/backend;
--   database setup;
--   mentor seeding;
--   key scheduling rules;
--   testing;
--   known limitations.
+Rate limiting is appropriate as additional API hardening.
 
-------------------------------------------------------------------------
+---
 
-# 25. Testing and Verification
+## Turn 32 — Claude: Final Assessment
 
-## A. Actually verified
+### Vikas
 
-The following areas were verified during the AI-assisted development
-process:
+Give the final technical assessment against the assignment requirements.
 
-### Build/type validation
+### Claude Response
 
-The project was checked through fresh dependency installation/build
-validation after the implementation changes.
+The main explicit requirements are implemented:
 
-### Slot availability logic
+1. Different parent/mentor timezone support.
+2. DST-aware scheduling.
+3. Working dummy meeting link and meeting route.
+4. Maximum two classes per mentor per day.
+5. Sensible no-availability handling.
 
-The actual per-slot logic was traced and tested to confirm that booking
-one slot does not incorrectly remove unrelated slots.
+The system is structured around UTC storage, mentor-local daily capacity, exact-slot availability, validation, and customer-facing confirmation.
 
-### DST validation
+The remaining submission work is documentation, screenshots, GitHub hygiene, transcript preparation, and the final submission email.
 
-The spring-forward edge case was tested.
+---
 
-The nonexistent local hour was excluded.
+# Part C — Final Verification and Submission Checklist
 
-### DST slot count
+## Technical Verification
 
-Spring-forward day:
+- [x] React + TypeScript frontend
+- [x] Node.js + TypeScript + Express backend
+- [x] MongoDB + Mongoose
+- [x] 10 mentors
+- [x] Maximum 2 classes per mentor per day
+- [x] Exact-slot mentor availability
+- [x] Mentor-local calendar day handling
+- [x] Parent timezone support
+- [x] UTC canonical booking storage
+- [x] DST spring-forward validation
+- [x] DST invalid-hour exclusion
+- [x] Automatic mentor assignment
+- [x] Dummy meeting link
+- [x] Meeting-room route
+- [x] No-availability error
+- [x] Booking confirmation
+- [x] Email service with development fallback
+- [x] Environment configuration
+- [x] Rate limiting
+- [x] Responsive UI
+- [x] README
+- [x] Screenshots
+- [x] GitHub repository
 
-``` text
-23 valid hourly slots
-23 unique UTC instants
-```
+## Testing Honesty
 
-Normal day:
+- Functional scheduling and timezone behavior were verified.
+- Build/type checks were verified.
+- Concurrency protections were verified through code-level review and database constraints.
+- A live simultaneous MongoDB race test was not completed.
+- Real SMTP delivery was not live-tested because credentials were unavailable.
 
-``` text
-24 hourly slots
-```
+These limitations are intentionally documented rather than presented as completed live tests.
 
-### API and frontend contract
+## Submission Checklist
 
-The frontend booking type and confirmation flow were aligned with the
-backend response.
+- [ ] Latest source pushed to GitHub.
+- [ ] README is present.
+- [ ] Screenshots render correctly.
+- [ ] `TRANSCRIPT.md` is present.
+- [ ] No `.env` or secrets are committed.
+- [ ] Booking flow works.
+- [ ] Meeting route works.
+- [ ] Timezone/DST behavior works.
+- [ ] Mentor capacity works.
+- [ ] No-availability behavior works.
+- [ ] Submission email sent before the stated deadline.
+- [ ] Subject follows the required Codeyoung format.
 
-------------------------------------------------------------------------
+---
 
-## B. Verified through code review/reasoning
-
-The following were verified through implementation review and database
-logic:
-
--   atomic daily capacity;
--   unique mentor/start-time constraint;
--   overlap checks;
--   capacity rollback;
--   parent email uniqueness;
--   timezone conversion architecture;
--   error-handling structure.
-
-------------------------------------------------------------------------
-
-## C. Not fully verified in the AI environment
-
-### Concurrent MongoDB race testing
-
-A production-like live concurrent race test was not completed because
-the required MongoDB test environment could not be established.
-
-### Real Gmail delivery
-
-Real SMTP delivery was not fully tested with live Gmail credentials.
-
-### Visual user testing
-
-The AI environment did not replace actual human usability testing. The
-UI was reviewed from code and design behavior, but no formal external
-user study is claimed.
-
-------------------------------------------------------------------------
-
-## D. Recommended final manual tests
-
-Before submission, the developer should manually verify:
-
-1.  Normal booking.
-2.  Second booking for the same mentor on the same day.
-3.  Attempted third booking for that mentor.
-4.  Different-slot availability after a booking.
-5.  Parent timezone conversion.
-6.  Mentor timezone/local-day behavior.
-7.  DST spring-forward case.
-8.  Past-time rejection.
-9.  No-mentor-available case.
-10. Meeting-link navigation.
-11. Parent/mentor email delivery if SMTP is configured.
-12. Frontend/backend CORS configuration.
-13. MongoDB environment configuration.
-14. Responsive behavior on desktop and mobile-sized screens.
-
-------------------------------------------------------------------------
-
-# 26. What Was Intentionally Not Built
-
-The following were deliberately kept outside the assignment scope:
-
--   Authentication/login.
--   Payment processing.
--   Real video-conferencing integration.
--   Full cancellation/rescheduling workflow.
--   Administrative dashboard.
--   Production CI/CD pipeline.
--   Production monitoring infrastructure.
--   Email retry/queue infrastructure.
--   One-parent-one-day booking restriction.
-
-These are not treated as failures because they were not required to
-demonstrate the core booking system.
-
-------------------------------------------------------------------------
-
-# 27. Requirement-to-Implementation Mapping
-
-  -----------------------------------------------------------------------
-  Assignment requirement              Implementation / status
-  ----------------------------------- -----------------------------------
-  React frontend                      Implemented
-
-  Node.js/Express backend             Implemented
-
-  10 mentors                          Implemented
-
-  Maximum 2 classes per mentor/day    Implemented
-
-  20 theoretical daily capacity       Implemented through 10 × 2 capacity
-
-  Automatic mentor assignment         Implemented
-
-  Exact-slot availability             Implemented
-
-  Parent/mentor timezone differences  Implemented
-
-  UTC canonical storage               Implemented
-
-  DST handling                        Implemented
-
-  DST slot-generation validation      Implemented
-
-  Double-booking protection           Implemented through atomic/database
-                                      protections
-
-  Dummy meeting link                  Implemented
-
-  Working dummy meeting page          Implemented
-
-  Sensible no-availability error      Implemented
-
-  Parent/mentor email architecture    Implemented
-
-  Input validation                    Implemented
-
-  CORS configuration                  Implemented
-
-  Rate limiting                       Implemented
-
-  Responsive customer-facing UI       Implemented
-
-  README                              Implemented
-
-  AI transcript                       Implemented
-
-  Authentication                      Intentionally out of scope
-
-  Payment                             Intentionally out of scope
-
-  Real video call                     Intentionally out of scope
-
-  Cancellation/rescheduling           Intentionally out of scope
-  -----------------------------------------------------------------------
-
-------------------------------------------------------------------------
-
-# 28. Final Engineering Assessment
-
-The development process followed an iterative engineering workflow:
-
-``` text
-Requirement
-    ↓
-Inspect existing implementation
-    ↓
-Challenge the reported behavior
-    ↓
-Trace the actual code path
-    ↓
-Identify real defects
-    ↓
-Choose the smallest correct architectural fix
-    ↓
-Implement
-    ↓
-Verify
-    ↓
-Document limitations
-    ↓
-Review remaining scope
-```
-
-A significant part of the work was deciding **what not to change**.
-
-The reported slot-availability issue did not reproduce in the backend
-implementation, so the booking algorithm was not unnecessarily
-rewritten.
-
-Instead, actual issues were identified and addressed:
-
--   missing build configuration;
--   missing meeting route;
--   stale confirmation state;
--   frontend/backend type mismatch;
--   local-date handling;
--   DST slot normalization;
--   brittle error classification;
--   API configuration;
--   environment configuration;
--   repository hygiene;
--   CORS configuration.
-
-The resulting architecture preserves separation of concerns while
-improving correctness, customer usability, validation, security
-hardening, and documentation.
-
-The most important engineering principles demonstrated are:
-
-1.  Inspect before modifying.
-2.  Verify a reported bug instead of assuming it is real.
-3.  Keep scheduling time canonical in UTC.
-4.  Evaluate mentor availability at the exact requested slot.
-5.  Treat DST as a first-class scheduling edge case.
-6.  Use database constraints and atomic operations for critical capacity
-    rules.
-7.  Keep frontend state consistent with authoritative backend responses.
-8.  Separate required features from optional product ideas.
-9.  Distinguish actual test results from code-review reasoning.
-10. Document limitations honestly.
+# End of Transcript
