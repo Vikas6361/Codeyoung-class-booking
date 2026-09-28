@@ -1,619 +1,806 @@
-**# Codeyoung Trial Class Booking System**
+# Codeyoung Trial Class Booking System
 
-A full-stack appointment-booking system for Codeyoung's free trial classes.
+A full-stack trial-class appointment booking system built for the **Codeyoung Full-Stack Developer recruitment assignment**.
 
-Parents pick a date, time, and timezone; the system finds an available
-
-mentor, books the class, generates a simulated meeting link, and (when
-
-configured) emails both parties.
-
-Built for the Codeyoung Full-Stack Developer recruitment assignment.
-
+Parents can select a date, time, and timezone. The system finds an available mentor, creates the booking, generates a simulated meeting link, and can send confirmation emails to the parent and mentor when SMTP is configured.
 
 ---
 
+## Overview
 
+- **10 active mentors**, using `Asia/Kolkata` as the mentor timezone.
+- Each mentor can conduct a maximum of **2 demo classes per local calendar day**.
+- The system supports **up to 20 bookings per day** through the 10 × 2 capacity model.
+- Parents can select **any IANA timezone**.
+- Parent local time is converted to UTC for booking and storage.
+- Mentor working hours are checked in the **mentor's own timezone**.
+- **DST-aware** slot generation and booking validation.
+- Automatic mentor assignment with load balancing.
+- Database-level protection against duplicate bookings and capacity races.
+- Simulated meeting room at `/meeting/:id`.
+- Basic rate limiting on availability and booking endpoints.
+- Responsive frontend for mobile and desktop.
 
-**## Overview**
+---
 
-\- **\*\*10 active mentors\*\***, all based in \`Asia/Kolkata\`, each working 9:00 AM–9:00 PM local time. (See "Design Decisions" for why the demo data uses one mentor timezone rather than several.)
+## Features
 
-\- Supports **\*\*up to 20 parent bookings/day\*\*** through the 10-mentors × 2-classes/day capacity model.
+### Booking
 
-\- Parents can book from **\*\*any IANA timezone\*\***; the system converts correctly to UTC and to each mentor's local time.
+- Book a trial class using parent name, email, timezone, date, and time slot.
+- Real-time availability is retrieved from the backend.
+- The system displays the number of mentors available for each slot.
+- A mentor is automatically assigned after booking.
 
-\- **\*\*Daylight Saving Time\*\*** is handled explicitly, in both the slot list and at booking time — a local time that does not exist because of a DST spring-forward is never shown as a bookable slot and is rejected with a clear error if requested directly.
+### Mentor Management
 
-\- **\*\*Concurrency-protected\*\***: an atomic MongoDB reservation (\`findOneAndUpdate\` with \`$lt\`) plus a unique compound index prevents two simultaneous requests from double-booking a mentor.
+- 10 active demo mentors are seeded into MongoDB.
+- Mentors work from **9:00 AM to 9:00 PM local time**.
+- Each mentor can conduct a maximum of **2 classes per local calendar day**.
+- Mentors are selected using their current daily booking count.
+- When multiple mentors have the same lowest load, one is selected from the tied candidates.
 
-\- A simulated meeting room page (\`/meeting/\:id\`) is served by the frontend when "Join Trial Class" is clicked.
+### Timezone and DST
 
-\- **\*\*Rate limited\*\***: the booking endpoint and the read-only availability endpoints have basic per-IP rate limits to blunt scripted abuse without interrupting normal use.
+- Parent times are interpreted using the selected IANA timezone.
+- Bookings are stored in UTC.
+- Mentor working hours are evaluated in the mentor's own timezone.
+- Confirmation times are converted back to the relevant person's timezone.
+- Nonexistent DST times during spring-forward transitions are rejected.
+- Ambiguous fall-back times are handled deterministically.
 
-\---
+### Booking Confirmation
 
-**## Features**
+The confirmation page displays:
 
-\- Book a trial class by name, email, timezone, date, and time slot.
+- Parent details
+- Assigned mentor
+- Parent local time
+- Mentor local time
+- Meeting link
+- Email confirmation status
 
-\- Real-time available-slot list, showing how many mentors can take each hour.
+Confirmation data comes from the **server response**, rather than stale frontend form state.
 
-\- Automatic mentor assignment, load-balanced across mentors with the fewest classes that day.
+### Meeting Room
 
-\- Hard limit of 2 classes per mentor per **\*\*mentor's local calendar day\*\***.
+The application provides a simulated meeting page:
 
-\- DST-aware validation both when generating the slot list and when a booking is submitted — a local time that doesn't exist because of a spring-forward gap is never offered as a slot, and ambiguous fall-back times resolve deterministically to their first occurrence rather than creating confusing duplicates.
+```text
+/meeting/:id
+```
 
-\- Confirmation screen showing the actual assigned mentor, both parties' local times, and a note confirming which email address the confirmation was sent to — all sourced directly from the server response.
+The **Join Trial Class** button opens this page using the generated meeting ID.
 
-\- Simulated "Join Trial Class" meeting room page with a unique meeting ID.
+### Email Notifications
 
-\- **\*\*Two distinct email notifications\*\*** via Gmail SMTP (Nodemailer): a parent confirmation ("Your Codeyoung Trial Class is Confirmed") and a separate mentor assignment notice ("New Codeyoung Trial Class Assigned"), each with content relevant to that recipient. A safe console-log fallback runs when SMTP isn't configured, so the app runs in development without any email setup, and an email failure never destroys an already-created booking.
+When SMTP is configured, two separate emails are sent:
 
-\- Friendly, specific error messages for every failure case (invalid input, DST conflict, no mentors available, slot just taken, network failure, rate limited) — no raw stack traces reach the client.
+1. **Parent confirmation**
+   - Subject: `Your Codeyoung Trial Class is Confirmed`
+   - Contains the assigned mentor, class time, timezone, and meeting link.
 
-\- Responsive UI from mobile (375px) through desktop (1920px+), with loading skeletons, empty states, and keyboard-focus states.
+2. **Mentor assignment**
+   - Subject: `New Codeyoung Trial Class Assigned`
+   - Contains student details, mentor-local class time, timezone, and meeting link.
 
-\---
+When SMTP is not configured, the application uses a development console-log fallback instead of failing the booking.
 
-**## Tech Stack**
+### Validation and Error Handling
 
-**\*\*Backend:\*\*** Node.js, TypeScript, Express 5, MongoDB, Mongoose, Zod, Luxon, Nodemailer
+The backend validates booking requests with Zod.
 
-**\*\*Frontend:\*\*** React 19, TypeScript, Vite, React Router, Axios
+Customer-friendly errors are provided for:
 
-\---
+- Invalid input
+- Invalid timezone
+- Invalid date/time
+- DST conflicts
+- No available mentors
+- Slot taken by another request
+- Rate limiting
+- Backend/network errors
 
-**## Architecture**
+Raw server stack traces are not returned to the frontend.
 
-\`\`\`
+---
+
+## Tech Stack
+
+### Frontend
+
+- React 19
+- TypeScript
+- Vite
+- React Router
+- Axios
+- Lucide React
+
+### Backend
+
+- Node.js
+- TypeScript
+- Express 5
+- MongoDB
+- Mongoose
+- Zod
+- Luxon
+- Nodemailer
+
+---
+
+## Architecture
+
+```text
+Frontend
+
+React Pages / Components
+          |
+          v
+     Axios API Client
+          |
+          v
+       REST API
+          |
+          v
+Backend
+
+Routes
+  |
+  v
+Controllers
+  |
+  v
+Services
+  |
+  v
+Models
+  |
+  v
+MongoDB
+```
+
+Controllers remain thin and handle request validation and response shaping.
+
+Business logic is kept inside the service layer, including booking, mentor availability, slot generation, timezone conversion, capacity management, and email notifications.
+
+---
+
+## Project Structure
+
+```text
+codeyoung-class-booking/
+│
+├── client/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   ├── types/
+│   │   ├── utils/
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   └── vite.config.ts
+│
+├── server/
+│   └── src/
+│       ├── config/
+│       ├── controllers/
+│       ├── middleware/
+│       ├── models/
+│       ├── routes/
+│       ├── seed/
+│       │   └── mentors.ts
+│       ├── services/
+│       │   ├── booking.service.ts
+│       │   ├── mentor.service.ts
+│       │   ├── slot.service.ts
+│       │   ├── capacity.service.ts
+│       │   ├── timezone.service.ts
+│       │   └── email.service.ts
+│       └── utils/
+│           └── meetingLink.ts
+│
+├── docs/
+│   └── screenshots/
+│
+├── README.md
+├── TRANSCRIPT.md
+└── .gitignore
+```
+
+---
+
+## Booking Flow
+
+1. The parent enters their name, email, timezone, and date.
+2. The frontend requests available slots from the backend.
+3. The backend generates hourly slots for the selected date and timezone.
+4. Each slot is converted to UTC.
+5. Available mentors are checked for that UTC time.
+6. The frontend displays slots that have at least one available mentor.
+7. The parent selects a slot and submits the booking.
+8. The backend validates the request again.
+9. The selected local date/time is converted to UTC.
+10. Available mentors are checked again.
+11. Mentors are sorted by their current daily booking count.
+12. The system atomically reserves mentor daily capacity.
+13. The booking is checked again for an exact overlap.
+14. The booking is created in MongoDB.
+15. A unique meeting link is generated.
+16. Email notifications are sent when SMTP is configured.
+17. The server returns the booking confirmation.
+18. The frontend displays the server-provided confirmation.
+19. **Book Another Class** refreshes availability from the backend.
+
+---
+
+## Timezone Handling
+
+The application uses **Luxon** and IANA timezone identifiers.
+
+```text
+Parent timezone
+      |
+      v
+Local date + local time
+      |
+      v
+     UTC
+      |
+      +--------------------+
+      |                    |
+      v                    v
+Mentor timezone       Database
+      |                    |
+      v                    v
+Working hours        startTimeUTC
+and local date       endTimeUTC
+```
+
+Rules:
+
+- Parent date/time is interpreted in the parent's selected timezone.
+- The resulting instant is converted to UTC.
+- All bookings are stored using UTC timestamps.
+- Mentor working hours are checked using the mentor's timezone.
+- Displayed times are converted from UTC to the appropriate person's timezone.
+
+---
+
+## DST Handling
+
+DST transitions are handled explicitly.
+
+### Spring Forward
+
+Some local times do not exist during a spring-forward transition.
+
+The application checks the requested local time by converting it to the timezone and round-tripping it back.
+
+If the resulting local time does not match the requested time, the time is treated as nonexistent and rejected.
+
+The same validation is performed while generating available slots so nonexistent hours are not displayed.
+
+### Fall Back
+
+During a fall-back transition, an hour can occur twice.
+
+The application resolves the ambiguous local time deterministically so that the slot list does not display confusing duplicate entries.
+
+The implementation was checked against the 2026 US DST transitions:
+
+- March 8, 2026 — spring forward
+- November 1, 2026 — fall back
+
+Detailed verification is documented in `TRANSCRIPT.md`.
+
+---
+
+## Mentor Capacity
+
+Each mentor has a maximum of **2 classes per local calendar day**.
+
+The day is calculated using the **mentor's timezone**, not the parent's timezone, server timezone, or UTC.
+
+The system converts the booking's UTC start time to the mentor's timezone before determining the mentor's local date.
+
+---
+
+## Mentor Assignment
+
+For a requested class time, the backend checks every active mentor for:
+
+- Working hours
+- Existing overlapping bookings
+- Daily booking count
+- Mentor local calendar date
+
+Available mentors are sorted by their current number of classes for that local day.
+
+The mentor with the lowest load is preferred. If multiple mentors have the same lowest load, one of the tied mentors is selected.
+
+This spreads demo classes across the mentor pool.
+
+---
+
+## Concurrency Protection
+
+The booking process uses database-level protection instead of relying only on application memory.
+
+### Daily Capacity
+
+`MentorDailyCapacity` uses an atomic MongoDB update with:
+
+```text
+bookingCount < 2
+$inc bookingCount
+```
+
+This prevents the daily counter from exceeding the configured capacity during concurrent requests.
+
+### Booking Uniqueness
+
+The `Booking` collection has a unique compound index:
+
+```text
+{ mentorId, startTimeUTC }
+```
+
+This provides database-level protection against two confirmed bookings for the same mentor at the same instant.
+
+### Testing Note
+
+A live simultaneous-request concurrency test was not executed against a production-like MongoDB instance during development.
+
+The concurrency protection was verified by inspecting the actual database operations and indexes.
+
+---
+
+## Email Notifications
+
+Nodemailer is used for SMTP email delivery.
+
+The email transporter is created lazily when first needed.
+
+### Development Mode
+
+If SMTP credentials are not configured, the application logs the email information instead of failing the booking.
+
+### Configured SMTP
+
+When SMTP is configured:
+
+- A parent confirmation email is sent.
+- A mentor assignment email is sent.
+
+Email failure does not roll back an already-created booking. The booking remains available through the confirmation screen.
+
+---
+
+## Database Schema
+
+### Mentor
+
+```text
+name
+email
+timezone
+isActive
+```
+
+The email field is unique.
+
+### Parent
+
+```text
+name
+email
+timezone
+```
+
+The email field is unique.
+
+If two simultaneous first-time bookings use the same parent email, the duplicate-key case is handled by re-fetching the existing parent record.
+
+### Booking
+
+```text
+parentId
+mentorId
+startTimeUTC
+endTimeUTC
+parentTimezone
+mentorTimezone
+meetingLink
+status
+```
+
+Unique index:
+
+```text
+{ mentorId, startTimeUTC }
+```
+
+### MentorDailyCapacity
+
+```text
+mentorId
+localDate
+bookingCount
+```
+
+Unique index:
+
+```text
+{ mentorId, localDate }
+```
+
+The booking count is limited to the configured maximum of 2.
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description | Rate Limit |
+|---|---|---|---|
+| GET | `/api/health` | Health check | None |
+| GET | `/api/slots` | Available hourly slots for date and timezone | 60/min/IP |
+| GET | `/api/mentors/availability` | Mentor availability for an exact date/time/timezone | 60/min/IP |
+| POST | `/api/bookings` | Create a trial-class booking | 10/min/IP |
+
+Common error response:
+
+```json
+{
+  "success": false,
+  "message": "Customer-friendly error message"
+}
+```
+
+Validation errors may also contain Zod validation details.
+
+Rate-limited requests return HTTP `429`.
+
+---
+
+## Environment Variables
+
+### Backend
+
+Create:
+
+```text
+server/.env
+```
+
+using:
+
+```text
+MONGODB_URI=mongodb://127.0.0.1:27017/codeyoung-trial-booking
+PORT=5000
+CORS_ORIGIN=http://localhost:5173
+FRONTEND_URL=http://localhost:5173
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASSWORD=
+EMAIL_FROM=
+```
+
+SMTP variables can remain blank during local development.
+
+### Frontend
+
+Create:
+
+```text
+client/.env
+```
+
+with:
+
+```text
+VITE_API_BASE_URL=http://localhost:5000/api
+```
+
+Never commit real credentials to GitHub.
+
+---
+
+## Local Setup
+
+### Prerequisites
+
+Install:
+
+- Node.js 18 or newer
+- MongoDB
+
+MongoDB can be installed locally, run using Docker, or hosted using MongoDB Atlas.
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Vikas6361/Codeyoung-class-booking.git
+cd Codeyoung-class-booking
+```
+
+### 2. Backend Setup
+
+```bash
+cd server
+npm install
+```
+
+Create the environment file:
+
+```bash
+cp .env.example .env
+```
+
+On Windows, you can also create `.env` manually by copying `.env.example`.
+
+Update `MONGODB_URI` if required.
+
+Seed the 10 mentors:
+
+```bash
+npm run seed:mentors
+```
+
+Start the backend:
+
+```bash
+npm run dev
+```
 
 Backend:
 
-  Routes → Controllers → Services → Models → MongoDB
+```text
+http://localhost:5000
+```
+
+### 3. Frontend Setup
+
+Open a second terminal:
+
+```bash
+cd client
+npm install
+```
+
+Create the environment file:
+
+```bash
+cp .env.example .env
+```
+
+Start the frontend:
+
+```bash
+npm run dev
+```
 
 Frontend:
 
-  React Pages/Components → API Service (axios) → REST API → Backend Services → MongoDB
+```text
+http://localhost:5173
+```
 
-\`\`\`
+### 4. Open the Application
 
-Controllers stay thin (validate input with Zod, call a service, shape the HTTP response).
+Open:
 
-All booking, availability, timezone, and capacity logic lives in \`services/\`.
+```text
+http://localhost:5173
+```
 
-\---
+Make sure MongoDB, the backend, and the frontend are running and the mentors have been seeded.
 
-**## Project Structure**
-
-\`\`\`
-
-codeyoung-trial-booking/
-
-├── client/
-
-│   ├── src/
-
-│   │   ├── components/        # TimezoneSelector, SlotGrid (presentational)
-
-│   │   ├── pages/              # BookingPage, MeetingPage (route-level)
-
-│   │   ├── services/api.ts     # axios client, typed API calls
-
-│   │   ├── types/booking.ts    # types matching the real API response shape
-
-│   │   ├── utils/dateUtils.ts  # local-date helper (avoids UTC/local date bug)
-
-│   │   ├── App.tsx             # router shell
-
-│   │   └── main.tsx            # React root + BrowserRouter
-
-│   └── vite.config.ts
-
-└── server/
-
-    └── src/
-
-        ├── config/             # booking rules, MongoDB connection
-
-        ├── controllers/        # HTTP layer (validation + response shaping)
-
-        ├── middleware/         # global 404 + error handler, rate limiter
-
-        ├── models/             # Mentor, Parent, Booking, MentorDailyCapacity
-
-        ├── routes/
-
-        ├── seed/mentors.ts     # seeds the 10 required mentors
-
-        ├── services/           # booking, mentor, slot, capacity, timezone, email
-
-        └── utils/meetingLink.ts
-
-\`\`\`
-
-\---
-
-**## Booking Flow**
-
-1\. Parent fills in name, email, and timezone, then picks a date.
-
-2\. Frontend calls \`GET /api/slots?date=...&timezone=...\`, which returns every
-
-   hourly slot that has **\*\*at least one\*\*** available mentor, along with the
-
-   exact count of mentors free at that slot.
-
-3\. Parent selects a slot and submits.
-
-4\. \`POST /api/bookings\` re-validates everything server-side (never trusts the
-
-   client), converts the local time to UTC, finds available mentors sorted
-
-   by lowest current daily load, and tries them in order:
-
-   - atomically reserve daily capacity (\`MentorDailyCapacity\`)
-
-   - re-check for an exact overlap (final race-condition guard)
-
-   - create the \`Booking\` document
-
-   - generate a meeting link and (try to) send confirmation emails
-
-5\. Server returns the mentor's name, both local times, the meeting link, and status.
-
-6\. Frontend shows the confirmation screen using that server response — not
-
-   locally-typed form state — so the assigned mentor is always shown correctly.
-
-7\. "Book Another Class" re-fetches availability from the server instead of
-
-   reusing stale in-memory data.
-
-\---
-
-**## Timezone Handling**
-
-\- Parent's date + time + timezone is parsed with **\*\*Luxon\*\***, in the
-
-  parent's timezone, then converted to UTC (\`localTimeToUTC\`).
-
-\- The mentor's working hours (9 AM–9 PM) are checked in the \*\*mentor's own
-
-  timezone\*\*, never the parent's.
-
-\- All bookings are stored in UTC (\`startTimeUTC\` / \`endTimeUTC\`).
-
-\- Every display of a time to a human (confirmation screen, email) is
-
-  produced by converting UTC back into that person's own timezone.
-
-**## DST Handling**
-
-\- **\*\*At booking time\*\***: \`validateLocalDateTime\` builds the requested local time in Luxon, then round-trips it back through the same timezone. If the round-trip doesn't match what was requested, that local time **\*\*does not exist\*\*** (a spring-forward gap) and a clear validation error is thrown instead of silently normalizing to some other time.
-
-\- **\*\*At slot-generation time\*\***: the same round-trip check runs for every hourly candidate slot before it's added to the list. This matters because Luxon's \`DateTime#set()\` does **\*\*not\*\*** reject a nonexistent local time on its own — it silently shifts it forward to the next valid instant. Without this check, a spring-forward day could show two slots (e.g. one built from \`hour: 2\` and one from \`hour: 3\`) that both silently resolve to the same real instant and both display as the same time — a confusing duplicate the parent shouldn't see. The fix skips the nonexistent hour entirely rather than shifting or duplicating it.
-
-\- Ambiguous times during a fall-back (an hour that occurs twice) resolve to a single, deterministic instant — Luxon/IANA's standard "first occurrence" — so the slot list never shows two entries that both claim to be, say, "1:00 AM."
-
-\- Verified directly against the 2026 US DST transitions (March 8 spring-forward, November 1 fall-back) with a standalone script exercising the actual slot-generation function — see \`TRANSCRIPT.md\` for the exact output.
-
-**## Mentor Capacity Rules**
-
-\- Each of the 10 mentors can take \*\*at most 2 classes per local calendar
-
-  day\**\*, computed using the mentor's \*own\** timezone, not the parent's and
-
-  not UTC.
-
-\- A UTC instant is mapped to the mentor's local calendar day
-
-  (\`getLocalDate\`) before counting existing bookings for that day.
-
-\- A booking at one time slot only affects **\*\*that mentor's\*\*** future
-
-  availability — it does not reduce the mentor count shown at unrelated
-
-  time slots, and it does not affect other mentors at all.
-
-**## Mentor Assignment**
-
-\- For a requested time, all active mentors are checked for: working hours,
-
-  no overlapping booking, and daily class count < 2.
-
-\- Available mentors are sorted by ascending classes-already-booked-today,
-
-  so load is spread across the pool rather than repeatedly picking the
-
-  same mentor.
-
-\- If several mentors are tied for lowest load, one is picked at random
-
-  among the tied candidates.
-
-**## Email Notifications**
-
-Two separate emails are sent after a successful booking, each with its
-
-own subject and content, since a parent confirmation and a mentor
-
-assignment notice serve different purposes:
-
-\- **\*\*Parent\*\*** — subject *\*"Your Codeyoung Trial Class is Confirmed"\**, containing the parent/student name, assigned mentor's name, date, time, the parent's own timezone, and the meeting link.
-
-\- **\*\*Mentor\*\*** — subject *\*"New Codeyoung Trial Class Assigned"\**, containing the student's name and email, the date, the class time in the **\*\*mentor's own local time and timezone\*\***, and the meeting link.
-
-Both go through the same underlying transport (\`getTransporter()\` in
-
-\`email.service.ts\`), which is built lazily on first use rather than at
-
-module-import time — building it eagerly caused a real bug during
-
-development where the transporter got permanently cached as \`null\` if
-
-the module loaded a moment before \`.env\` was read (see \`TRANSCRIPT.md\`).
-
-If SMTP isn't configured, both emails fall back to a \`[DEV] ... skipped\`
-
-console log instead of throwing, so local development works without any
-
-email setup. If sending fails for a fully-configured SMTP account (e.g. a
-
-transient network error), the failure is logged but does not roll back or
-
-fail the already-created booking — the parent still gets their
-
-confirmation screen and meeting link either way.
-
-**## Database Schema**
-
-**\*\*Mentor\*\***: \`name\`, \`email\` (unique), \`timezone\`, \`isActive\`
-
-**\*\*Parent\*\***: \`name\`, \`email\` (**\*\*unique\*\***), \`timezone\`
-
-  - the unique index on \`email\` means two concurrent first-time bookings
-
-    from the same new parent email can race on \`Parent.create()\`; the
-
-    losing request catches the resulting MongoDB duplicate-key error
-
-    (code \`11000\`) and re-fetches the record the other request just
-
-    created, rather than surfacing a 500.
-
-**\*\*Booking\*\***: \`parentId\`, \`mentorId\`, \`startTimeUTC\`, \`endTimeUTC\`, \`parentTimezone\`, \`mentorTimezone\`, \`meetingLink\`, \`status\`
-
-  - unique index on \`{ mentorId, startTimeUTC }\` — a hard database-level
-
-    guarantee against two confirmed bookings for the same mentor at the
-
-    same instant.
-
-**\*\*MentorDailyCapacity\*\***: \`mentorId\`, \`localDate\`, \`bookingCount\` (0–2)
-
-  - unique index on \`{ mentorId, localDate }\`, used as an atomic counter
-
-    (\`findOneAndUpdate\` with a \`bookingCount < 2\` filter) to reserve
-
-    capacity safely under concurrent requests.
-
-**## API Endpoints**
-
-\| Method | Path                    | Description                                   | Rate limit |
-
-\|--------|-------------------------|------------------------------------------------|------------|
-
-\| GET    | \`/api/health\`           | Health check                                   | none |
-
-\| GET    | \`/api/slots\`             | Available hourly slots for a date + timezone   | 60/min/IP |
-
-\| GET    | \`/api/mentors/availability\` | Mentors available at an exact date/time/tz  | 60/min/IP |
-
-\| POST   | \`/api/bookings\`          | Create a booking                               | 10/min/IP |
-
-All error responses share the shape \`{ success: false, message: string }\`.
-
-Validation errors additionally include a Zod \`errors\` object. A
-
-rate-limited request receives a \`429\` with the same shape and a
-
-customer-friendly message ("Too many booking attempts. Please wait a
-
-moment and try again.").
-
-**## Environment Variables**
-
-**\*\*server/.env\*\*** (see \`server/.env.example\`):
-
-\`\`\`
-
-MONGODB_URI=mongodb://127.0.0.1:27017/codeyoung-trial-booking
-
-PORT=5000
-
-CORS_ORIGIN=http\://localhost:5173
-
-FRONTEND_URL=http\://localhost:5173
-
-SMTP_HOST=
-
-SMTP_PORT=587
-
-SMTP_SECURE=false
-
-SMTP_USER=
-
-SMTP_PASSWORD=
-
-EMAIL_FROM=
-
-\`\`\`
-
-Leave the \`SMTP\_\*\` variables blank to run without email — bookings still
-
-work, and the email content is logged to the server console instead.
-
-**\*\*client/.env\*\*** (see \`client/.env.example\`):
-
-\`\`\`
-
-VITE_API_BASE_URL=http\://localhost:5000/api
-
-\`\`\`
-
-\---
-
-**## Local Setup**
-
-**### Prerequisites**
-
-\- Node.js 18+
-
-\- A running MongoDB instance (local install, Docker, or Atlas)
-
-**### Backend Setup**
-
-\`\`\`bash
-
-cd server
-
-npm install
-
-cp .env.example .env       # then edit MONGODB_URI etc. if needed
-
-npm run seed\:mentors       # seeds the 10 required mentors
-
-npm run dev                # starts on http\://localhost:5000
-
-\`\`\`
-
-**### Frontend Setup**
-
-\`\`\`bash
-
-cd client
-
-npm install
-
-cp .env.example .env       # defaults to http\://localhost:5000/api
-
-npm run dev                # starts on http\://localhost:5173
-
-\`\`\`
-
-**### Running the Application**
-
-With MongoDB running, start the backend (\`server\`) and frontend (\`client\`)
-
-in two terminals as above, then open \`http\://localhost:5173\`.
-
-\---
+---
 
 ## Testing
 
-This repository does not include an automated test suite. The booking,
-timezone, capacity, validation, and frontend flows were manually verified
-during development using the actual application and service functions.
-
-| # | Test | Result |
-|---|------|--------|
-| 1 | Normal booking end-to-end | Pass |
-| 2 | Repeated booking of one slot counts 10 → 0, then disappears | Pass |
-| 3 | Booking one slot does not change other slots' mentor counts | Pass |
-| 4 | Mentor cannot exceed 2 classes per local day | Pass |
-| 5 | Mentor with 2 classes today is available again tomorrow | Pass |
-| 6 | Daily capacity uses the mentor's local date, not the parent's date | Pass |
-| 7 | Parent timezone → UTC conversion | Pass |
-| 8 | Mentor timezone → UTC conversion | Pass |
-| 9 | DST spring-forward nonexistent local time is rejected | Pass |
-| 9b | DST spring-forward nonexistent time is excluded from generated slots | Pass — bug identified and fixed |
-| 10 | DST fall-back ambiguous local time resolves deterministically | Pass |
-| 11 | Concurrent booking race protection | Code-level verification |
-| 12 | No-availability error returns a clean 400 response | Pass |
-| 13 | Email delivery with SMTP configured | Not live-tested — SMTP credentials unavailable |
-| 14 | Application runs without SMTP configured | Pass |
-| 15 | Join Trial Class opens the meeting page | Pass |
-| 16 | Book Another Class refreshes availability | Pass |
-| 18 | Mobile responsiveness (375px–1920px) | Pass |
-| 19 | Invalid form input messaging | Pass |
-| 20 | Backend-unavailable error messaging | Pass |
-
-### Concurrency verification
-
-A live two-request concurrency test was not executed in this development
-environment. The protection was verified by inspecting the actual database
-logic.
-
-`reserveMentorDailyCapacity` uses an atomic `findOneAndUpdate` operation
-with a `bookingCount < 2` condition and `$inc`. The `Booking` collection
-also has a unique index on:
-
-`{ mentorId, startTimeUTC }`
-
-These provide two independent protections against exceeding mentor
-capacity and creating duplicate bookings for the same mentor and slot.
-
-A live concurrency test against a production-like MongoDB instance should
-be performed before production deployment.
-
-### Email verification
-
-The application supports SMTP-based booking emails. The SMTP code path was
-reviewed, but live delivery was not tested because SMTP credentials were
-not available during development.
-
-When SMTP is not configured, the application uses a development fallback
-and logs the booking email information instead of failing the booking.
-
-**## Design Decisions**
-
-\- \*\*Mentor working hours are always evaluated in the mentor's own
-
-  timezone\*\*, independent of the parent's timezone — this was called out
-
-  explicitly in the assignment and is easy to get backwards.
-
-\- **\*\*Availability is computed per time slot, per mentor\*\***, by checking real
-
-  overlaps and the real daily count — not by decrementing a single shared
-
-  counter — so booking one slot never affects unrelated slots.
-
-\- **\*\*Capacity reservation is atomic at the database level\*\*** rather than
-
-  relying on an in-memory lock, since Node's single-threaded event loop
-
-  doesn't protect against multiple server instances or interleaved async
-
-  operations.
-
-\- **\*\*The confirmation screen renders exactly what the server returned\*\***,
-
-  not what the parent typed into the form, so the displayed mentor name
-
-  and local times are always authoritative.
-
-\- Meeting rooms are a real React route (\`/meeting/\:id\`) rather than a
-
-  dead link, so the "Join Trial Class" flow is actually demonstrable.
-
-\- **\*\*All 10 demo mentors use \`Asia/Kolkata\`, on purpose.\*\*** The original
-
-  brief states this as the real product's actual operating model ("parents
-
-  are in the US or UK, and mentors are in India"), so diversifying mentor
-
-  timezones would contradict the one concrete fact given about Codeyoung's
-
-  real setup. Cross-timezone conversion is still fully exercised and
-
-  demonstrable — through the *\*parent's\** timezone selector, which accepts
-
-  any IANA zone — which mirrors how the real system actually works, rather
-
-  than a hypothetical where mentors are scattered worldwide. Giving
-
-  different mentors different timezones would also require each mentor to
-
-  have their *\*own\** configurable working-hour window (a 9am–9pm mentor in
-
-  IST and a 9am–9pm mentor in PST cover very different absolute UTC
-
-  ranges), which is a real architecture change beyond what this seed-data
-
-  question calls for.
-
-\- **\*\*No per-parent daily booking limit.\*\*** The assignment does not state
-
-  this as a requirement, and it was deliberately left out rather than
-
-  added speculatively — see "Future Improvements" for why it might be
-
-  worth adding later, and why it wasn't added now.
-
-**## Security Considerations**
-
-\- \`.env\` is git-ignored; only \`.env.example\` (no real secrets) is committed.
-
-\- SMTP/Mongo credentials are never hard-coded and never sent to the frontend.
-
-\- CORS is restricted to a single configurable origin (\`CORS_ORIGIN\`), not a wildcard.
-
-\- All input is validated server-side with Zod — frontend validation exists
-
-  only for UX, never as the sole guard.
-
-\- Error responses never leak stack traces; unexpected errors fall through
-
-  a single global handler that returns a generic message.
-
-\- Mongoose's built-in query builders are used throughout (no raw string
-
-  query construction), which avoids NoSQL injection via operator injection
-
-  on plain string/date fields.
-
-\- Basic per-IP rate limiting on the booking endpoint (10/min) and the
-
-  availability endpoints (60/min) blunts scripted abuse — e.g. a script
-
-  rapidly exhausting the day's 20-booking capacity, or hammering the SMTP
-
-  provider — without a limit tight enough to interrupt a real parent
-
-  retrying after a validation error or a "slot just booked" race.
-
-**## Limitations**
-
-\- No authentication — anyone with the URL can book a slot, matching the
-
-  scope of the assignment (a public trial-class booking form).
-
-\- No cancellation/rescheduling flow.
-
-\- No automated test suite; verification was manual/scripted (see Testing).
-
-\- Live concurrent-request behavior (test 11) was verified by code review,
-
-  not a live simultaneous-request run, due to sandbox network restrictions
-
-  during development.
-
-\- Meeting rooms are fully simulated — there is no real video integration.
-
-**## Future Improvements**
-
-\- Add an automated test suite (e.g. Vitest + Supertest against a real or
-
-  Testcontainers-backed MongoDB) covering the scenarios in Testing below.
-
-\- Consider a **\*\*one trial class per parent per day\*\*** rule, keyed on
-
-  normalized email + the relevant local calendar date. This is a product
-
-  decision, not an assignment requirement — real trial-class products
-
-  commonly cap free trials per customer, but nothing in the brief asks for
-
-  it, and adding it now would mean guessing at the right customer-facing
-
-  behavior (block entirely? allow a second child under the same parent
-
-  email? which local date — parent's or mentor's?) without a clear
-
-  specification to design against.
-
-\- Add booking cancellation and mentor-side booking management.
-
-\- Add pagination/date-range querying for slots beyond a single day.
-
-\- Make rate limits configurable via environment variables rather than
-
-  fixed constants, if different environments need different thresholds.
+The repository does not currently include an automated test suite.
+
+The booking, timezone, capacity, validation, and frontend flows were manually verified during development using the actual application and service functions.
+
+| Test | Result |
+|---|---|
+| Normal booking end-to-end | Pass |
+| Repeated booking of one slot | Pass |
+| Fully booked slot disappears | Pass |
+| Booking one slot does not affect unrelated slots | Pass |
+| Mentor maximum of 2 classes per local day | Pass |
+| Mentor becomes available again on the next local day | Pass |
+| Mentor local-date capacity calculation | Pass |
+| Parent timezone to UTC conversion | Pass |
+| Mentor timezone conversion | Pass |
+| DST spring-forward nonexistent time rejected | Pass |
+| DST nonexistent time excluded from slots | Pass |
+| DST fall-back ambiguous time handled deterministically | Pass |
+| No-availability response | Pass |
+| Application without SMTP configuration | Pass |
+| Meeting room navigation | Pass |
+| Book Another Class refreshes availability | Pass |
+| Mobile responsiveness | Pass |
+| Invalid form input handling | Pass |
+| Backend unavailable error handling | Pass |
+| Live concurrent booking test | Not performed |
+| Live SMTP delivery test | Not performed |
+
+### Concurrency Verification
+
+A live two-request concurrency test was not performed against a production-like MongoDB environment.
+
+The implementation was verified through the actual database logic:
+
+- Atomic `findOneAndUpdate`
+- `bookingCount < 2`
+- `$inc`
+- Unique `{ mentorId, startTimeUTC }` index
+- Unique `{ mentorId, localDate }` capacity index
+
+A production deployment should include an actual concurrent-load test.
+
+### Email Verification
+
+SMTP delivery was not live-tested because real SMTP credentials were not available during development.
+
+The application was tested with SMTP disabled, where email information is logged instead of causing booking failure.
 
 ---
+
+## Design Decisions
+
+### Mentor Timezone
+
+All seeded mentors use:
+
+```text
+Asia/Kolkata
+```
+
+This follows the assignment's stated operating model where mentors are based in India while parents may be in different countries.
+
+The parent timezone selector accepts any IANA timezone, allowing cross-timezone behavior to be demonstrated without artificially assigning different timezones to the demo mentors.
+
+### Mentor Working Hours
+
+Working hours are evaluated in the mentor's own timezone.
+
+This avoids incorrectly applying the parent's timezone to mentor availability.
+
+### Per-Slot Availability
+
+Availability is calculated independently for each time slot.
+
+Booking one slot does not globally reduce the mentor count for unrelated slots.
+
+### Atomic Capacity
+
+Daily capacity is protected at the database level rather than with an in-memory counter.
+
+This is safer when asynchronous requests overlap or when multiple server instances are used.
+
+### Server-Authoritative Confirmation
+
+The confirmation screen uses the booking returned by the backend.
+
+This ensures that the displayed mentor and times reflect the actual booking rather than stale frontend state.
+
+### Meeting Room
+
+The meeting link opens a real React route instead of being a dead placeholder link.
+
+The meeting page is simulated because a real video-conferencing provider is outside the assignment scope.
+
+### No Per-Parent Daily Limit
+
+The assignment does not specify a maximum number of bookings per parent per day.
+
+Therefore, a per-parent daily limit was not added as a required business rule.
+
+---
+
+## Security Considerations
+
+- `.env` is ignored by Git.
+- Only `.env.example` is committed.
+- MongoDB and SMTP credentials are not hard-coded.
+- Secrets are never sent to the frontend.
+- CORS is configurable and restricted to the configured frontend origin.
+- Backend input is validated using Zod.
+- Frontend validation is only for user experience; the server remains authoritative.
+- Error responses do not expose stack traces.
+- A global error handler handles unexpected server errors.
+- Mongoose query builders are used instead of constructing raw query strings.
+- Basic per-IP rate limiting is applied to booking and availability endpoints.
+
+---
+
+## Limitations
+
+- No authentication or user accounts are implemented.
+- Anyone with access to the application can attempt to book an available slot.
+- The meeting room is simulated; there is no real video-conferencing integration.
+- There is no automated unit/integration test suite yet.
+- Live SMTP delivery was not tested because credentials were unavailable during development.
+- Live simultaneous-request concurrency testing was not performed against a production-like MongoDB environment.
+- The demo mentors are seeded with the same `Asia/Kolkata` timezone.
+
+These limitations are intentionally documented rather than presented as implemented functionality.
+
+---
+
+## Future Improvements
+
+Possible production improvements include:
+
+- Parent authentication and account management
+- Admin dashboard
+- Mentor dashboard
+- Real video-conferencing integration
+- Automated unit and integration tests
+- Automated concurrency/load testing
+- Production monitoring and structured logging
+- Calendar integration
+- Booking cancellation and rescheduling
+- More advanced availability rules
+- Per-parent booking limits if required by the product
+
+---
+
+## Screenshots
+
+Screenshots are available in:
+
+```text
+docs/screenshots/
+```
+
+Recommended screenshots included in the repository:
+
+- Booking Page
+- Available Time Slots
+- Booking Confirmation
+- Timezone Support
+- Trial Class Meeting Room
+- Responsive Mobile UI
+
+---
+
+## AI-Assisted Development
+
+AI tools were used during development for:
+
+- Architecture discussion
+- Code generation and refinement
+- Debugging
+- Timezone and DST reasoning
+- Concurrency review
+- Database design review
+- Frontend UX improvements
+- Testing guidance
+- README documentation
+- Final code review
+
+The AI session transcript is available in:
+
+```text
+TRANSCRIPT.md
+```
+
+The transcript documents the development discussions and technical decisions made during the project.
+
+---
+
+## Submission
+
+This project was developed as part of the **Codeyoung Full-Stack Developer recruitment assignment**.
+
 ## Screenshots
 
 ### Booking Page
@@ -637,3 +824,7 @@ and logs the booking email information instead of failing the booking.
 ---
 
 \---
+
+GitHub repository:
+
+https://github.com/Vikas6361/Codeyoung-class-booking
